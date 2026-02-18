@@ -23,9 +23,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "tickers",
-        nargs="+",
+        nargs="*",
         type=str,
         help="Ticker symbols (e.g. AAPL MSFT GOOG)",
+    )
+    parser.add_argument(
+        "--file", "-f",
+        type=str,
+        help="Path to a .txt file with one ticker per line",
     )
     parser.add_argument(
         "--lookback",
@@ -54,7 +59,25 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    tickers = [t.upper() for t in args.tickers]
+
+    # Collect tickers from positional args and/or file
+    tickers = list(args.tickers) if args.tickers else []
+    if args.file:
+        try:
+            with open(args.file) as fh:
+                for line in fh:
+                    stripped = line.strip()
+                    if stripped and not stripped.startswith("#"):
+                        tickers.append(stripped)
+        except FileNotFoundError:
+            print(f"File not found: {args.file}", file=sys.stderr)
+            return 1
+
+    if not tickers:
+        print("Error: no tickers provided. Pass them as arguments or via --file.", file=sys.stderr)
+        return 1
+
+    tickers = [t.upper() for t in tickers]
 
     # Fetch data
     try:
